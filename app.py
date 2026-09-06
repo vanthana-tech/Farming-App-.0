@@ -143,7 +143,7 @@ interface = gr.Interface(
 
     inputs=[
         gr.Image(
-            sources=["camera", "upload"],
+            sources=["Webcam", "upload"],
             type="numpy",
             label="📷 Upload or Capture Crop Image"
         ),
