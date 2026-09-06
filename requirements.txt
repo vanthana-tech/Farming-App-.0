@@ -1,6 +1,6 @@
 streamlit
 gradio
-numpy
+numpy<2
 Pillow
 tflite-runtime
 gTTS
