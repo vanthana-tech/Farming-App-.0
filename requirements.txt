@@ -2,5 +2,5 @@ streamlit
 gradio
 numpy<2
 Pillow
-tflite-runtime
+tensorflow==2.20.0
 gTTS
