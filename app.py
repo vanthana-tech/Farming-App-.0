@@ -10,7 +10,7 @@ import json
 import numpy as np
 import streamlit as st
 from PIL import Image
-import tensorflow as tf
+import tflite_runtime.interpreter as tflite
 from remedies import get_remedy, evaluate_sensors, STATUS_COLORS
 
 st.set_page_config(page_title="Smart Farming Assistant", page_icon="🌱", layout="centered")
@@ -18,7 +18,7 @@ st.set_page_config(page_title="Smart Farming Assistant", page_icon="🌱", layou
 # ---------- Load model + labels (cached so it only loads once) ----------
 @st.cache_resource
 def load_model():
-    interpreter = tf.lite.Interpreter(model_path="crop_disease_model.tflite")
+    interpreter = tflite.Interpreter(model_path="crop_disease_model.tflite")
     interpreter.allocate_tensors()
     with open("labels.json") as f:
         labels = json.load(f)
