@@ -1,126 +1,123 @@
-"""
-AI-Powered Smart Farming Assistant - Demo Dashboard
-Run with: streamlit run app.py
-Requires (in the same folder):
-- crop_disease_model.tflite   (your trained model, downloaded from Colab)
-- labels.json                 (your class labels, downloaded from Colab)
-- remedies.py                 (included alongside this file)
-"""
-import json
-import numpy as np
 import streamlit as st
 from PIL import Image
+import numpy as np
 import tflite_runtime.interpreter as tflite
-from remedies import get_remedy, evaluate_sensors, STATUS_COLORS
+import json
+import os
+from remedies import get_remedy
 
-st.set_page_config(page_title="Smart Farming Assistant", page_icon="🌱", layout="centered")
-
-# ---------- Load model + labels (cached so it only loads once) ----------
+# Cache the model loading
 @st.cache_resource
 def load_model():
     interpreter = tflite.Interpreter(model_path="crop_disease_model.tflite")
     interpreter.allocate_tensors()
+    return interpreter
+
+@st.cache_resource
+def load_labels():
     with open("labels.json") as f:
-        labels = json.load(f)
-    # JSON keys are strings; convert back to int-indexed dict
-    labels = {int(k): v for k, v in labels.items()}
-    return interpreter, labels
+        return json.load(f)
 
+# Load model and labels
+try:
+    interpreter = load_model()
+    labels = load_labels()
+    model_loaded = True
+except Exception as e:
+    model_loaded = False
+    st.error(f"Error loading model: {str(e)}")
 
-def predict(interpreter, labels, pil_image):
-    input_details = interpreter.get_input_details()
-    output_details = interpreter.get_output_details()
-    size = input_details[0]["shape"][1:3]
-    img = pil_image.resize((size[1], size[0]))
-    arr = np.array(img).astype("float32")
-    arr = (arr / 127.5) - 1.0  # match MobileNetV2 preprocessing
-    arr = np.expand_dims(arr, axis=0)
-    interpreter.set_tensor(input_details[0]["index"], arr)
-    interpreter.invoke()
-    output = interpreter.get_tensor(output_details[0]["index"])[0]
-    predicted_idx = int(np.argmax(output))
-    confidence = float(np.max(output)) * 100
-    return labels[predicted_idx], confidence
+st.set_page_config(page_title="Smart Farming Assistant", layout="wide")
 
-
-# ---------- Sidebar: language + simulated sensors ----------
-st.sidebar.header("Settings")
-language = st.sidebar.radio("Language / மொழி", ["English", "தமிழ்"])
+# Language selection
+col1, col2 = st.columns([0.9, 0.1])
+with col2:
+    language = st.selectbox("Language", ["English", "Tamil"], key="lang")
 lang_code = "en" if language == "English" else "ta"
 
-st.sidebar.markdown("---")
-st.sidebar.subheader("Sensor readings (live from field unit)")
-# In the real device these come from the ESP32 over serial/WiFi.
-# For this demo, sliders simulate live sensor input.
-soil_moisture = st.sidebar.slider("Soil moisture (%)", 0, 100, 45)
-temperature = st.sidebar.slider("Temperature (°C)", 15, 50, 29)
-humidity = st.sidebar.slider("Humidity (%)", 0, 100, 65)
+# Title
+st.title("🌾 AI Smart Farming Assistant" if lang_code == "en" else "🌾 AI ஸ்மார்ட் பண்ணை உதவியாளர்")
 
-# ---------- Main title ----------
-st.title("🌱 Smart Farming Assistant" if lang_code == "en" else "🌱 ஸ்மார்ட் விவசாய உதவியாளர்")
-st.caption(
-    "Upload or capture a leaf photo to check your crop's health"
-    if lang_code == "en"
-    else "உங்கள் பயிரின் ஆரோக்கியத்தை சரிபார்க்க இலை புகைப்படத்தை பதிவேற்றவும்"
+# Tabs
+tab1, tab2, tab3 = st.tabs(
+    ["Disease Detection", "Sensors", "Irrigation"] if lang_code == "en"
+    else ["நோய் கண்டறிதல்", "சென்சர்கள்", "நீர்ப்பாசனம்"]
 )
 
-# ---------- Image input ----------
-img_file = st.camera_input("Scan a leaf" if lang_code == "en" else "இலையை ஸ்கேன் செய்யவும்")
-if img_file is None:
-    img_file = st.file_uploader(
-        "Or upload a photo" if lang_code == "en" else "அல்லது புகைப்படத்தை பதிவேற்றவும்",
-        type=["jpg", "jpeg", "png"],
-    )
+# TAB 1: Disease Detection
+with tab1:
+    st.subheader("Upload crop image for disease detection" if lang_code == "en" else "நோய் கண்டறிய பயிர் படத்தை பதிவேற்றவும்")
+    
+    uploaded_file = st.file_uploader("Choose image...", type=["jpg", "jpeg", "png"])
+    
+    if uploaded_file and model_loaded:
+        image = Image.open(uploaded_file).resize((224, 224))
+        st.image(image, caption="Uploaded Image" if lang_code == "en" else "பதிவேற்றப்பட்ட படம்")
+        
+        # Predict
+        input_data = np.array(image, dtype=np.float32) / 255.0
+        input_data = np.expand_dims(input_data, axis=0)
+        
+        input_details = interpreter.get_input_details()
+        output_details = interpreter.get_output_details()
+        
+        interpreter.set_tensor(input_details[0]['index'], input_data)
+        interpreter.invoke()
+        output = interpreter.get_tensor(output_details[0]['index'])
+        
+        predicted_class = labels[np.argmax(output[0])]
+        confidence = np.max(output[0]) * 100
+        
+        # Status indicator
+        if "healthy" in predicted_class.lower():
+            status = "🟢 Healthy" if lang_code == "en" else "🟢 ஆரோக்கியம்"
+        elif "Early" in predicted_class:
+            status = "🟡 Early Stage Disease" if lang_code == "en" else "🟡 ஆரம்ப நோய்"
+        else:
+            status = "🔴 Advanced Disease" if lang_code == "en" else "🔴 முற்றிய நோய்"
+        
+        st.metric("Status", status)
+        st.metric("Disease/Condition", predicted_class.replace("_", " "))
+        st.metric("Confidence", f"{confidence:.1f}%")
+        
+        # Remedy
+        remedy = get_remedy(predicted_class, lang_code)
+        st.success(f"💡 Remedy: {remedy}")
+    elif uploaded_file and not model_loaded:
+        st.error("Model not loaded. Please check requirements.")
+
+# TAB 2: Sensors
+with tab2:
+    st.subheader("Environmental Monitoring" if lang_code == "en" else "சுற்றுச்சூழல் கண்காணிப்பு")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        temp = st.slider("Temperature (°C)", 15, 40, 28)
+        st.metric("🌡️ Temperature", f"{temp}°C")
+    
+    with col2:
+        humidity = st.slider("Humidity (%)", 20, 95, 65)
+        st.metric("💧 Humidity", f"{humidity}%")
+    
+    with col3:
+        soil = st.slider("Soil Moisture", 0, 100, 45)
+        moisture_status = "Wet 💧" if soil > 60 else ("Optimal 👍" if soil > 40 else "Dry 🌵")
+        st.metric("🌱 Soil Moisture", f"{soil}% ({moisture_status})")
+
+# TAB 3: Irrigation
+with tab3:
+    st.subheader("Irrigation Control" if lang_code == "en" else "நீர்ப்பாசனம் கட்டுப்பாடு")
+    
+    st.write("Automatic watering when soil gets dry:" if lang_code == "en" else "மண் வறண்டால் தானியங்கி நீர்ப்பாசனம்:")
+    
+    soil_dry_threshold = st.slider("Dry threshold (%)", 0, 100, 30)
+    pump_status = st.checkbox("Enable Auto Irrigation" if lang_code == "en" else "தானியங்கி நீர்ப்பாசனத்தை இயக்கவும்")
+    
+    if pump_status:
+        st.success("✅ Irrigation System Active" if lang_code == "en" else "✅ நீர்ப்பாசன முறை செயல்பாட்டில் உள்ளது")
+    else:
+        st.info("⏸️ Irrigation System Inactive" if lang_code == "en" else "⏸️ நீர்ப்பாசன முறை செயல்நிறுத்தப்பட்டுள்ளது")
 
 st.markdown("---")
-
-if img_file is not None:
-    image = Image.open(img_file).convert("RGB")
-    st.image(image, caption="Scanned leaf" if lang_code == "en" else "ஸ்கேன் செய்யப்பட்ட இலை", width=300)
-
-    try:
-        interpreter, labels = load_model()
-        predicted_class, confidence = predict(interpreter, labels, image)
-    except FileNotFoundError:
-        st.error(
-            "Model files not found. Place crop_disease_model.tflite and "
-            "labels.json in this folder."
-        )
-        st.stop()
-
-    st.subheader("Disease / Pest Check" if lang_code == "en" else "நோய் / பூச்சி பரிசோதனை")
-    if confidence < 70:
-        note = (
-            "Possible issue detected - please verify visually or rescan"
-            if lang_code == "en"
-            else "சாத்தியமான பிரச்சனை கண்டறியப்பட்டது - தயவுசெய்து மீண்டும் சரிபார்க்கவும்"
-        )
-        st.warning(f"⚠️ {note} (confidence: {confidence:.1f}%)")
-    else:
-        result = get_remedy(predicted_class, lang_code)
-        emoji = STATUS_COLORS.get(result["status"], "ℹ️")
-        st.markdown(f"### {emoji}{result['message']}")
-        st.write(f"**{'Confidence' if lang_code == 'en' else 'நம்பகத்தன்மை'}:** {confidence:.1f}%")
-        if result["remedy"]:
-            st.info(result["remedy"])
-
-    # ---------- Sensor-based condition ----------
-    st.markdown("---")
-    st.subheader("Field Conditions" if lang_code == "en" else "வயல் நிலைமைகள்")
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Soil Moisture", f"{soil_moisture}%")
-    col2.metric("Temperature", f"{temperature}°C")
-    col3.metric("Humidity", f"{humidity}%")
-
-    sensor_condition = evaluate_sensors(soil_moisture, temperature)
-    sensor_result = get_remedy(sensor_condition, lang_code)
-    emoji = STATUS_COLORS.get(sensor_result["status"], "ℹ️")
-    st.markdown(f"### {emoji}{sensor_result['message']}")
-    if sensor_result["remedy"]:
-        st.info(sensor_result["remedy"])
-else:
-    st.info(
-        "Take a photo or upload one to get started."
-        if lang_code == "en"
-        else "தொடங்க ஒரு புகைப்படத்தை எடுக்கவும் அல்லது பதிவேற்றவும்."
-    )
+st.caption("Smart Farming Assistant v1.0 | Powered by AI" if lang_code == "en" else "ஸ்மார்ட் பண்ணை உதவியாளர் v1.0 | AI மூலம் இயங்கும்")
