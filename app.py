@@ -1,7 +1,7 @@
 import gradio as gr
 from PIL import Image
 import numpy as np
-import tflite_runtime.interpreter as tflite
+import tensorflow as tf
 import json
 from gtts import gTTS
 import tempfile
@@ -11,7 +11,7 @@ from remedies import get_remedy
 # -----------------------------
 # Load TFLite model
 # -----------------------------
-interpreter = tflite.Interpreter(model_path="crop_disease_model.tflite")
+interpreter = tf.lite.Interpreter(model_path="crop_disease_model.tflite")
 interpreter.allocate_tensors()
 
 input_details = interpreter.get_input_details()
