@@ -1,6 +1,5 @@
-streamlit
-pillow
+gradio
 numpy
-tensorflow
-
-
+Pillow
+tflite-runtime
+gTTS
