@@ -9,7 +9,7 @@ from remedies import get_remedy
 # Cache the model loading
 @st.cache_resource
 def load_model():
-    interpreter = tflite.Interpreter(model_path="crop_disease_model.tflite")
+    interpreter = tf.lite.Interpreter(model_path="crop_disease_model.tflite")
     interpreter.allocate_tensors()
     return interpreter
 
