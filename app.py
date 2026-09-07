@@ -1,7 +1,7 @@
 import streamlit as st
 from PIL import Image
 import numpy as np
-import tflite_runtime.interpreter as tflite
+import tensorflow as tflite
 import json
 import os
 from remedies import get_remedy
