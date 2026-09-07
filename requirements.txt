@@ -1,6 +1,4 @@
-
-gradio
+streamlit
 numpy
-Pillow
+pillow
 tensorflow==2.20.0
-
