@@ -1,6 +1,6 @@
-streamlit
+
 gradio
-numpy<2
+numpy
 Pillow
 tensorflow==2.20.0
-gTTS
+
