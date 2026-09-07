@@ -4,6 +4,7 @@ import numpy as np
 import tflite_runtime.interpreter as tflite
 import json
 from remedies import get_remedy
+import os
 
 # Load model
 interpreter = tflite.Interpreter(model_path="crop_disease_model.tflite")
@@ -38,4 +39,7 @@ interface = gr.Interface(
     description="Upload a crop image to detect diseases"
 )
 
-interface.launch()
+interface.launch(
+    server_name="0.0.0.0",
+    server_port=int(os.environ.get("PORT", 7860))
+)
