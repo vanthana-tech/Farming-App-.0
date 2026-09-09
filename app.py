@@ -2,7 +2,7 @@
 import gradio as gr
 from PIL import Image
 import numpy as np
-import tensorflow as tftf
+import tensorflow as tf
 import json
 from gtts import gTTS
 import io
