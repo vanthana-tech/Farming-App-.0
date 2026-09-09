@@ -2,14 +2,14 @@
 import gradio as gr
 from PIL import Image
 import numpy as np
-import tflite_runtime.interpreter as tflite
+import ai_edge_litert.interpreter
 import json
 from gtts import gTTS
 import io
 from remedies import get_remedy
 
 # Load model
-interpreter = tflite.Interpreter(model_path="crop_disease_model.tflite")
+interpreter = Interpreter(model_path="crop_disease_model.tflite")
 interpreter.allocate_tensors()
 
 with open("labels.json") as f:
