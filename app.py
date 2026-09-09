@@ -9,7 +9,7 @@ import io
 from remedies import get_remedy
 
 # Load model
-interpreter = tf.lite.interpreter(model_path="crop_disease_model.tflite")
+interpreter = tf.lite.Interpreter(model_path="crop_disease_model.tflite")
 interpreter.allocate_tensors()
 
 with open("labels.json") as f:
