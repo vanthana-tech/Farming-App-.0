@@ -1,4 +1,5 @@
-streamlit
-numpy
-pillow
-tensorflow==2.20.0
+gradio==4.0.0
+tflite-runtime==2.13.0\
+pillow==10.0.0
+numpy==1.24.3
+gtts==2.4.0
