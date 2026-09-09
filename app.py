@@ -2,7 +2,6 @@
 import gradio as gr
 from PIL import Image
 import numpy as np
-import tensorflow as tf
 from ai_edge_litert.interpreter
 import Interpreter
 import json
