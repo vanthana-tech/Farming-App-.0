@@ -3,6 +3,7 @@ import gradio as gr
 from PIL import Image
 import numpy as np
 import ai_edge_litert.interpreter
+import Interpreter
 import json
 from gtts import gTTS
 import io
