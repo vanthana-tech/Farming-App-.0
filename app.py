@@ -119,5 +119,5 @@ with tab3:
     else:
         st.info("⏸️ Irrigation System Inactive" if lang_code == "en" else "⏸️ நீர்ப்பாசன முறை செயல்நிறுத்தப்பட்டுள்ளது")
 
-st.markdown("---")
-st.caption("Smart Farming Assistant v1.0 | Powered by AI" if lang_code == "en" else "ஸ்மார்ட் பண்ணை உதவியாளர் v1.0 | AI மூலம் இயங்கும்")
+st.markdown("---")  
+<centre>st.caption("Smart Farming Assistant v1.0 | Powered by AI" if lang_code == "en" else "ஸ்மார்ட் பண்ணை உதவியாளர் v1.0 | AI மூலம் இயங்கும்")<centre>
