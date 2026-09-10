@@ -55,7 +55,14 @@ try:
     input_details = interpreter.get_input_details()
     output_details = interpreter.get_output_details()
     with open("labels.json") as f:
-        labels = json.load(f)
+        labels_raw = json.load(f)
+    # labels.json may be a plain list (["Healthy", "Leaf Blight", ...]) or a
+    # dict mapping index -> label (e.g. {"0": "Healthy", "1": "Leaf Blight"}).
+    # Normalize either format into an ordered list so labels[i] always works.
+    if isinstance(labels_raw, dict):
+        labels = [labels_raw[k] for k in sorted(labels_raw, key=lambda x: int(x))]
+    else:
+        labels = labels_raw
     MODEL_READY = True
     print("[Farmie] Real crop disease model loaded.")
 except Exception as e:
