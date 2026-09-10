@@ -363,9 +363,9 @@ if "healthy" in predicted_class.lower():
                 "🌱 Farmie: Your crop looks healthy! "
                 "Keep monitoring it regularly and maintain proper watering and nutrition."
             )
-
-    else:
-        if language == "tamil":
+        
+else:
+      if language == "tamil":
             title = f"⚠️ பயிர் நோய் கண்டறியப்பட்டது: {predicted_class}"
             result = (
                 f"🌿 நோய்: {predicted_class}\n"
