@@ -93,7 +93,9 @@ with gr.Blocks(title="🌾 Smart Farming System") as demo:
             question_input = gr.Textbox(label="Ask a farming question", placeholder="e.g., How to water crops?")
             assistant_output = gr.Textbox(label="Assistant Answer", lines=4)
             ask_btn = gr.Button("Ask", variant="primary")
-  ask_btn.click(farming_assistant, inputs=question_input, outputs=assistant_output)
+  ask_btn.click(farming_assistant, 
+                inputs=question_input,
+                outputs=assistant_output)
 
 demo.launch(
     server_name="0.0.0.0",
