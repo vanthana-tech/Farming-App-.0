@@ -62,7 +62,7 @@ with gr.Blocks() as demo:
     
     with gr.Tabs():
         with gr.TabItem("Disease Detection"):
-            image = gr.Image(sources=["camera", "upload"], type="numpy")
+            image = gr.Image(sources=["webcam", "upload"], type="numpy")
             lang = gr.Dropdown(["English", "Tamil"])
             btn = gr.Button("Detect")
             output_text = gr.Textbox()
