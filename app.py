@@ -1,5 +1,4 @@
-
-       import gradio as gr
+import gradio as gr
 from PIL import Image
 import numpy as np
 import tflite_runtime.interpreter as tflite
