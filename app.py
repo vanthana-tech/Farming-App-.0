@@ -11,6 +11,7 @@ Then open http://localhost:5000
 """
 
 import base64
+import concurrent.futures
 import io
 import json
 import random
@@ -650,7 +651,15 @@ async function detectDisease() {
 
   try {
     const response = await fetch('/api/detect', { method: 'POST', body: formData });
-    const data = await response.json();
+    let data;
+    try {
+      data = await response.json();
+    } catch (parseErr) {
+      throw new Error('Server did not return a valid response (HTTP ' + response.status + '). Please try again.');
+    }
+    if (!response.ok) {
+      throw new Error(data.error || ('Server error (HTTP ' + response.status + ')'));
+    }
 
     document.getElementById('resultTitle').textContent = data.title;
     document.getElementById('resultText').textContent = data.result;
@@ -835,6 +844,16 @@ def index():
 
 @app.route("/api/detect", methods=["POST"])
 def detect():
+    try:
+        return _run_detect()
+    except Exception as e:
+        # Guarantee a JSON response even on an unexpected failure, so the
+        # front-end never tries to parse an HTML error page as JSON.
+        print("Detect Error:", e)
+        return jsonify({"error": f"Detection failed: {e}"}), 500
+
+
+def _run_detect():
     file = request.files["file"]
     language = request.form.get("language", "english")
     lang_code = "ta" if language == "tamil" else "en"
@@ -927,15 +946,27 @@ def sensors():
     return jsonify(sensor_state)
 
 
-def _tts_base64(text, lang_code):
+def _tts_base64(text, lang_code, timeout=8):
     if not text:
         return None
-    try:
+
+    def _generate():
         tts_obj = gTTS(text=text, lang=lang_code)
         buf = io.BytesIO()
         tts_obj.write_to_fp(buf)
         buf.seek(0)
         return base64.b64encode(buf.read()).decode("utf-8")
+
+    # gTTS calls out to Google Translate over the network. On some hosts
+    # (e.g. Render) that call can hang or be blocked, which was stalling
+    # the whole /api/detect request until the server timed out and
+    # returned an HTML error page instead of JSON. Running it with a hard
+    # timeout means a slow/blocked TTS call just gets skipped (no audio)
+    # instead of breaking the whole response.
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(_generate)
+            return future.result(timeout=timeout)
     except Exception as e:
         print("TTS Error:", e)
         return None
