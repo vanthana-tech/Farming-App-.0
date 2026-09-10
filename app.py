@@ -338,8 +338,8 @@ def detect():
     confidence = np.max(output[0]) * 100
     remedy = get_remedy(predicted_class, "ta" if language == "tamil" else "en")
     
-if "healthy" in predicted_class.lower():
-  if language == "tamil":
+        if "healthy" in predicted_class.lower():
+        if language == "tamil":
             title = "✅ வாழ்த்துக்கள்! ஆரோக்கியமாக உள்ளது!"
             result = (
                 f"🌿 நிலை: ஆரோக்கியமான பயிர்\n"
@@ -416,10 +416,29 @@ if "healthy" in predicted_class.lower():
         "audio": audio_base64
     })
 
+if "healthy" in predicted_class.lower():
+    if language == "tamil":
+        title = "✅ வாழ்த்துக்கள்! ஆரோக்கியமாக உள்ளது!"
+        result = f"🌿 நிலை: ஆரோக்கியமான பயிர்\n📊 நம்பிக்கை: {confidence:.1f}%\n\nஉங்கள் பயிர் ஆரோக்கியமாக உள்ளது."
+        farmie_msg = "🌱 ஃபார்மி: உங்கள் பயிர் ஆரோக்கியமாக இருக்கிறது! தொடர்ந்து நல்ல பராமரிப்பை செய்யுங்கள்."
+    else:
+        title = "✅ Great! Your Crop is Healthy!"
+        result = f"🌿 Status: HEALTHY\n📊 Confidence: {confidence:.1f}%\n\nYour crop appears to be healthy."
+        farmie_msg = "🌱 Farmie: Your crop looks healthy! Keep monitoring it regularly."
 
+else:
+    if language == "tamil":
+        title = f"⚠️ பயிர் நோய் கண்டறியப்பட்டது: {predicted_class}"
+        result = f"🌿 நோய்: {predicted_class}\n📊 நம்பிக்கை: {confidence:.1f}%\n\n💊 பரிந்துரைக்கப்பட்ட தீர்வு:\n{remedy}"
+        farmie_msg = f"🌱 ஃபார்மி: உங்கள் பயிரில் {predicted_class} கண்டறியப்பட்டுள்ளது."
+    else:
+        title = f"⚠️ Crop Disease Detected: {predicted_class}"
+        result = f"🌿 Disease: {predicted_class}\n📊 Confidence: {confidence:.1f}%\n\n💊 Recommended Remedy:\n{remedy}"
+        farmie_msg = f"🌱 Farmie: {predicted_class} has been detected in your crop."
 if __name__ == "__main__":
     app.run(
         host="0.0.0.0",
         port=5000,
         debug=False
     )
+
