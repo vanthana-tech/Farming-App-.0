@@ -22,6 +22,19 @@ from flask import Flask, jsonify, render_template_string, request
 from gtts import gTTS
 from PIL import Image
 
+# iPhones save photos as HEIC/HEIF by default, which Pillow cannot open
+# unless a HEIF plugin is registered. Register it if available so uploaded
+# .heic images work too; if the package isn't installed, HEIC uploads will
+# still fail with a clear error instead of a silent crash.
+try:
+    from pillow_heif import register_heif_opener
+
+    register_heif_opener()
+    print("[Farmie] HEIC/HEIF image support enabled.")
+except ImportError:
+    print("[Farmie] pillow-heif not installed - .heic/.heif uploads will not work. "
+          "Add 'pillow-heif' to requirements.txt to enable them.")
+
 app = Flask(__name__)
 
 # ---------------------------------------------------------------------------
@@ -974,3 +987,4 @@ def _tts_base64(text, lang_code, timeout=8):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)
+
