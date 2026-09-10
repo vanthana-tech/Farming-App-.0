@@ -416,15 +416,16 @@ else:
         "audio": audio_base64
     })
 
+
 if "healthy" in predicted_class.lower():
     if language == "tamil":
         title = "✅ வாழ்த்துக்கள்! ஆரோக்கியமாக உள்ளது!"
         result = f"🌿 நிலை: ஆரோக்கியமான பயிர்\n📊 நம்பிக்கை: {confidence:.1f}%\n\nஉங்கள் பயிர் ஆரோக்கியமாக உள்ளது."
-        farmie_msg = "🌱 ஃபார்மி: உங்கள் பயிர் ஆரோக்கியமாக இருக்கிறது! தொடர்ந்து நல்ல பராமரிப்பை செய்யுங்கள்."
+        farmie_msg = "🌱 ஃபார்மி: உங்கள் பயிர் ஆரோக்கியமாக இருக்கிறது!"
     else:
         title = "✅ Great! Your Crop is Healthy!"
         result = f"🌿 Status: HEALTHY\n📊 Confidence: {confidence:.1f}%\n\nYour crop appears to be healthy."
-        farmie_msg = "🌱 Farmie: Your crop looks healthy! Keep monitoring it regularly."
+        farmie_msg = "🌱 Farmie: Your crop looks healthy!"
 
 else:
     if language == "tamil":
@@ -435,10 +436,3 @@ else:
         title = f"⚠️ Crop Disease Detected: {predicted_class}"
         result = f"🌿 Disease: {predicted_class}\n📊 Confidence: {confidence:.1f}%\n\n💊 Recommended Remedy:\n{remedy}"
         farmie_msg = f"🌱 Farmie: {predicted_class} has been detected in your crop."
-if __name__ == "__main__":
-    app.run(
-        host="0.0.0.0",
-        port=5000,
-        debug=False
-    )
-
