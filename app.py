@@ -338,8 +338,8 @@ def detect():
     confidence = np.max(output[0]) * 100
     remedy = get_remedy(predicted_class, "ta" if language == "tamil" else "en")
     
-        if "healthy" in predicted_class.lower():
-        if language == "tamil":
+if "healthy" in predicted_class.lower():
+  if language == "tamil":
             title = "✅ வாழ்த்துக்கள்! ஆரோக்கியமாக உள்ளது!"
             result = (
                 f"🌿 நிலை: ஆரோக்கியமான பயிர்\n"
