@@ -127,29 +127,14 @@ except ImportError:
 # an ESP32/Arduino device)
 # ---------------------------------------------------------------------------
 sensor_state = {
-    "temperature_c": 28.5,
-    "humidity_pct": 62.0,
-    "soil_moisture_pct": 41.0,
+    "temperature_c": None,
+    "humidity_pct": None,
+    "soil_status": "UNKNOWN",
     "irrigation_on": False,
-    "last_updated": time.time(),
+    "last_updated": 0,
 }
 
 
-def refresh_sensors():
-    """Simulate a small realistic random walk in sensor readings."""
-    sensor_state["temperature_c"] = round(
-        min(45, max(10, sensor_state["temperature_c"] + random.uniform(-0.8, 0.8))), 1
-    )
-    sensor_state["humidity_pct"] = round(
-        min(100, max(10, sensor_state["humidity_pct"] + random.uniform(-3, 3))), 1
-    )
-    # If irrigation is on, soil moisture trends up; otherwise it slowly dries out
-    drift = random.uniform(0.5, 2.0) if sensor_state["irrigation_on"] else random.uniform(-1.5, -0.2)
-    sensor_state["soil_moisture_pct"] = round(
-        min(100, max(0, sensor_state["soil_moisture_pct"] + drift)), 1
-    )
-    sensor_state["last_updated"] = time.time()
-    return sensor_state
 
 
 # ---------------------------------------------------------------------------
@@ -166,19 +151,19 @@ def answer_query(message, lang):
 
     # Sensor-aware answers
     if any(w in text for w in ["water", "irrigat", "நீர்", "பாசனம்"]):
-        if s["soil_moisture_pct"] < 35:
+        if s["soil_status"] =="DRY":
             return r(
-                f"Your soil moisture is currently {s['soil_moisture_pct']}%, which is on the "
+                f"Your soil moisture is currently {s['soil_status']}%, which is on the "
                 f"drier side. I'd recommend turning on irrigation soon — you can do that from "
                 f"the Farm Sensors tab.",
-                f"உங்கள் மண் ஈரப்பதம் தற்போது {s['soil_moisture_pct']}% ஆக உள்ளது, இது "
+                f"உங்கள் மண் ஈரப்பதம் தற்போது {s['soil_status']}% ஆக உள்ளது, இது "
                 f"சற்று உலர்ந்த நிலை. Farm Sensors தாவலில் இருந்து பாசனத்தை இயக்குமாறு "
                 f"பரிந்துரைக்கிறேன்.",
             )
         return r(
-            f"Soil moisture looks healthy right now at {s['soil_moisture_pct']}%. No need to "
+            f"Soil moisture looks healthy right now at {s['soil_status']}%. No need to "
             f"irrigate immediately — check again in a few hours.",
-            f"தற்போது மண் ஈரப்பதம் {s['soil_moisture_pct']}% ஆக நல்ல நிலையில் உள்ளது. "
+            f"தற்போது மண் ஈரப்பதம் {s['soil_status']}% ஆக நல்ல நிலையில் உள்ளது. "
             f"உடனடியாக பாசனம் தேவையில்லை — சில மணிநேரங்களில் மீண்டும் சரிபார்க்கவும்.",
         )
 
@@ -955,15 +940,49 @@ def tts():
     audio_base64 = _tts_base64(text, lang_code)
     return jsonify({"audio": audio_base64})
 
+@app.route("/api/esp32/data", methods=["POST"])
+def esp32_data():
+    data = request.get_json(silent=True) or {}
 
-@app.route("/api/sensors", methods=["GET", "POST"])
+    try:
+        soil = str(data.get("soil_status", "UNKNOWN")).upper()
+        temperature = float(data.get("temperature_c"))
+        humidity = float(data.get("humidity_pct"))
+        pump = str(data.get("pump", "OFF")).upper()
+
+        if soil not in ["DRY", "WET"]:
+            return jsonify({"error": "Invalid soil status"}), 400
+
+        if pump not in ["ON", "OFF"]:
+            return jsonify({"error": "Invalid pump status"}), 400
+
+        sensor_state["soil_status"] = soil
+        sensor_state["temperature_c"] = temperature
+        sensor_state["humidity_pct"] = humidity
+        sensor_state["irrigation_on"] = (pump == "ON")
+        sensor_state["last_updated"] = time.time()
+
+        return jsonify({
+            "success": True,
+            "message": "Sensor data received"
+        })
+
+    except (TypeError, ValueError):
+        return jsonify({"error": "Invalid sensor data"}), 400
+
+
+@app.route("/api/sensors", methods=["GET"])
 def sensors():
-    if request.method == "POST":
-        data = request.get_json(force=True)
-        if data.get("action") == "toggle_irrigation":
-            sensor_state["irrigation_on"] = not sensor_state["irrigation_on"]
-    refresh_sensors()
-    return jsonify(sensor_state)
+    state = dict(sensor_state)
+
+    if state["last_updated"] == 0:
+        state["device_online"] = False
+    else:
+        state["device_online"] = (
+            time.time() - state["last_updated"] < 15
+        )
+
+    return jsonify(state)
 
 
 def _tts_base64(text, lang_code, timeout=8):
