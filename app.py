@@ -2022,8 +2022,7 @@ def _run_detect():
                 "No image uploaded"
         }), 400
 
-    file =
-        request.files["file"]
+    file = request.files["file"]
 
     language =
         request.form.get(
