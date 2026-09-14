@@ -132,7 +132,6 @@ sensor_state = {
     "soil_moisture_pct": 41.0,
     "irrigation_on": False,
     "last_updated": time.time(),
-    "is_live": False,
 }
 
 
@@ -963,8 +962,8 @@ def sensors():
         data = request.get_json(force=True)
         if data.get("action") == "toggle_irrigation":
             sensor_state["irrigation_on"] = not sensor_state["irrigation_on"]
-    if not sensor_state.get("is_live"):
-        refresh_sensors()
+    refresh_sensors()
+    return jsonify(sensor_state)
 
 
 def _tts_base64(text, lang_code, timeout=8):
@@ -977,37 +976,6 @@ def _tts_base64(text, lang_code, timeout=8):
         tts_obj.write_to_fp(buf)
         buf.seek(0)
         return base64.b64encode(buf.read()).decode("utf-8")
-
-    @app.route("/api/sensors", methods=["GET", "POST"])
-def sensors():
-    if request.method == "POST":
-        data = request.get_json(force=True)
-        if data.get("action") == "toggle_irrigation":
-            sensor_state["irrigation_on"] = not sensor_state["irrigation_on"]
-    if not sensor_state.get("is_live"):
-        refresh_sensors()
-    return jsonify(sensor_state)
-
-
-@app.route("/api/sensor-data", methods=["POST"])
-def receive_sensor_data():
-    """Receive REAL sensor data from the ESP32."""
-    try:
-        data = request.get_json()
-        sensor_state["temperature_c"] = round(float(data.get("temperature", 0)), 1)
-        sensor_state["humidity_pct"] = round(float(data.get("humidity", 0)), 1)
-        sensor_state["soil_moisture_pct"] = int(data.get("soilMoisture", 0))
-        sensor_state["irrigation_on"] = bool(data.get("pumpStatus", False))
-        sensor_state["last_updated"] = time.time()
-        sensor_state["is_live"] = True
-        print(f"[Farmie] ESP32 data received: {sensor_state}")
-        return jsonify({"status": "ok"}), 200
-    except Exception as e:
-        print(f"[Farmie] Error receiving ESP32 data: {e}")
-        return jsonify({"status": "error", "message": str(e)}), 400
-
-
-def _tts_base64(text, lang_code, timeout=8):
 
     # gTTS calls out to Google Translate over the network. On some hosts
     # (e.g. Render) that call can hang or be blocked, which was stalling
