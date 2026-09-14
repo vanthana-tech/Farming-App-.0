@@ -793,7 +793,7 @@ function renderSensors() {
     </div>
     <div class="sensor-card">
       <div class="icon">🌱</div>
-      <div class="value">${sensorData.soil_moisture_pct}%</div>
+      <div class="value">${sensorData.soil_status}</div>
       <div class="label">${t.soil}</div>
     </div>
     <div class="sensor-card ${sensorData.irrigation_on ? 'on' : ''}">
@@ -819,18 +819,7 @@ async function refreshSensors() {
 }
 
 async function toggleIrrigation() {
-  const btn = document.getElementById('irrigationBtn');
-  btn.disabled = true;
-  try {
-    const response = await fetch('/api/sensors', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'toggle_irrigation' })
-    });
-    sensorData = await response.json();
-    renderSensors();
-  } catch (e) { console.error(e); }
-  finally { btn.disabled = false; }
+  await refreshSensors():
 }
 
 // init
