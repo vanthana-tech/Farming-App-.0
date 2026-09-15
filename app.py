@@ -565,7 +565,6 @@ HTML = """
     <div class="card">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
         <h2 id="sensorHeading" style="color:var(--primary-dark);">🌡️ Live Farm Conditions</h2>
-        <span class="badge demo" id="sensorBadge">DEMO DATA</span>
       </div>
       <div class="sensor-grid" id="sensorGrid"></div>
       <div class="sensor-actions">
