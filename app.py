@@ -121,6 +121,55 @@ except ImportError:
             )
         return entry.get(lang, entry.get("en", ""))
 
+# Banana remedies (English / Tamil). Checked first; anything that is not a
+# banana disease still goes to remedies.py exactly as before.
+BANANA_REMEDIES = {
+    "sigatoka": {
+        "en": "Remove and burn heavily spotted leaves. Improve drainage and plant spacing "
+              "for better air flow, and avoid overhead watering. Spray a recommended "
+              "fungicide (such as mancozeb or propiconazole) at the first signs, rotating "
+              "products, and ask your local agricultural officer for the right dose.",
+        "ta": "அதிகம் புள்ளிகள் உள்ள இலைகளை அகற்றி எரித்துவிடவும். நீர் தேங்காமல் "
+              "வடிகால் வசதியை மேம்படுத்தி, செடிகளுக்கு இடையே போதிய இடைவெளி விட்டு "
+              "காற்றோட்டத்தை அதிகரிக்கவும்; மேலிருந்து நீர் பாய்ச்சுவதை தவிர்க்கவும். "
+              "ஆரம்ப அறிகுறிகளிலேயே மான்கோசெப் அல்லது புரோபிகோனசோல் போன்ற "
+              "பரிந்துரைக்கப்பட்ட பூஞ்சைக் கொல்லியை மாற்றி மாற்றி தெளிக்கவும்; சரியான "
+              "அளவை உங்கள் வேளாண் அலுவலரிடம் கேட்டறியவும்.",
+    },
+    "cordana": {
+        "en": "Remove and destroy infected leaves. Keep the field well drained and avoid "
+              "long leaf wetness and overcrowding. If it spreads, spray a copper-based "
+              "fungicide or mancozeb as advised by your local agricultural officer.",
+        "ta": "பாதிக்கப்பட்ட இலைகளை அகற்றி அழிக்கவும். வயலில் நீர் தேங்காமல் "
+              "பார்த்துக்கொண்டு, இலைகள் நீண்ட நேரம் ஈரமாக இருப்பதையும் செடிகள் "
+              "நெருக்கமாக இருப்பதையும் தவிர்க்கவும். நோய் பரவினால் உங்கள் வேளாண் "
+              "அலுவலரின் ஆலோசனைப்படி காப்பர் அடிப்படையிலான பூஞ்சைக் கொல்லி அல்லது "
+              "மான்கோசெப் தெளிக்கவும்.",
+    },
+    "pestalotiopsis": {
+        "en": "Cut off and destroy affected leaves and keep the field clean of fallen "
+              "leaves. Avoid wounding leaves and stems, and don't overcrowd plants. Apply a "
+              "copper-based fungicide if the spots keep spreading, and keep plants well fed "
+              "and watered.",
+        "ta": "பாதிக்கப்பட்ட இலைகளை வெட்டி அழிக்கவும்; விழுந்த இலைகளை வயலில் இருந்து "
+              "அகற்றி சுத்தமாக வைக்கவும். இலைகள் மற்றும் தண்டுகளில் காயம் ஏற்படுவதை "
+              "தவிர்த்து, செடிகளை நெருக்கமாக வளர்க்க வேண்டாம். புள்ளிகள் தொடர்ந்து "
+              "பரவினால் காப்பர் அடிப்படையிலான பூஞ்சைக் கொல்லியை தெளிக்கவும்; செடிகளுக்கு "
+              "போதிய உரமும் நீரும் அளிக்கவும்.",
+    },
+}
+
+_base_get_remedy = get_remedy
+
+
+def get_remedy(disease, lang):
+    key = "".join(ch for ch in disease.lower() if ch.isalpha())
+    if "banana" in key:
+        for name, entry in BANANA_REMEDIES.items():
+            if name in key:
+                return entry.get(lang, entry["en"])
+    return _base_get_remedy(disease, lang)
+
 # ---------------------------------------------------------------------------
 # Simulated sensor state (swap this section for real sensor/IoT input later,
 # e.g. reading from an MQTT broker, a serial port, or a REST endpoint from
@@ -877,7 +926,7 @@ def detect():
 #   "0-1"   -> pixel / 255           (what the app did before)
 #   "-1-1"  -> (pixel / 127.5) - 1   (MobileNet / EfficientNet style)
 #   "0-255" -> raw pixel values
-PREPROCESS_MODE = "0-1"
+PREPROCESS_MODE = "-1-1"
 MIN_CONFIDENCE = 60.0   # % - below this the photo is rejected as "not sure"
 MIN_LEAF_GREEN = 0.10   # fraction of green/yellow-green pixels needed to count as a leaf
 
