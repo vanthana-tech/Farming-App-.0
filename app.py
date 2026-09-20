@@ -872,6 +872,62 @@ def detect():
         return jsonify({"error": f"Detection failed: {e}"}), 500
 
 
+# ---- Detection settings (only touch these if results look wrong) ----------
+# How pixels are scaled before going into the model. Must match training:
+#   "0-1"   -> pixel / 255           (what the app did before)
+#   "-1-1"  -> (pixel / 127.5) - 1   (MobileNet / EfficientNet style)
+#   "0-255" -> raw pixel values
+PREPROCESS_MODE = "0-1"
+MIN_CONFIDENCE = 60.0   # % - below this the photo is rejected as "not sure"
+MIN_LEAF_GREEN = 0.10   # fraction of green/yellow-green pixels needed to count as a leaf
+
+
+def _preprocess(image):
+    arr = np.array(image, dtype=np.float32)
+    if PREPROCESS_MODE == "-1-1":
+        return arr / 127.5 - 1.0
+    if PREPROCESS_MODE == "0-255":
+        return arr
+    return arr / 255.0
+
+
+def _leaf_fraction(image):
+    """Share of pixels that are green / yellow-green (leaf-like colours).
+    A finger, wall or table has almost none, so it gets rejected."""
+    hsv = np.array(image.convert("HSV"))
+    h, s, v = hsv[..., 0], hsv[..., 1], hsv[..., 2]
+    mask = (h >= 32) & (h <= 120) & (s >= 40) & (v >= 40)
+    return float(mask.mean())
+
+
+def _reject_response(language, lang_code, reason):
+    if language == "tamil":
+        title = "❌ இலை கண்டறியப்படவில்லை"
+        if reason == "not_leaf":
+            result = "இது ஒரு செடி இலை போல தெரியவில்லை. தயவுசெய்து தெளிவான இலையின் படத்தை பதிவேற்றவும்."
+        else:
+            result = "இந்த படத்தை உறுதியாக கண்டறிய முடியவில்லை. நல்ல வெளிச்சத்தில், ஒரே இலையை நெருக்கமாக எடுத்த படத்தை பதிவேற்றவும்."
+        farmie_msg = "🌱 ஃபார்மி: தெளிவான இலை படத்தை பதிவேற்றவும்."
+    else:
+        title = "❌ Leaf not detected"
+        if reason == "not_leaf":
+            result = "This doesn't look like a plant leaf. Please upload a clear photo of a tomato or potato leaf."
+        else:
+            result = ("I couldn't identify this image with enough confidence. Please upload a "
+                      "close, well-lit photo of a single leaf.")
+        farmie_msg = "🌱 Farmie: Please upload a clear photo of a leaf."
+    return jsonify(
+        {
+            "title": title,
+            "result": result,
+            "farmie_msg": farmie_msg,
+            "audio": _tts_base64(farmie_msg, lang_code),
+            "healthy": False,
+            "demo_mode": not MODEL_READY,
+        }
+    )
+
+
 def _run_detect():
     file = request.files["file"]
     language = request.form.get("language", "english")
@@ -879,8 +935,13 @@ def _run_detect():
 
     image = Image.open(file).convert("RGB").resize((224, 224))
 
+    # Reject photos that don't look like a plant leaf (finger, table, face...)
+    if _leaf_fraction(image) < MIN_LEAF_GREEN:
+        print("[Farmie] Rejected: image does not look like a leaf.")
+        return _reject_response(language, lang_code, "not_leaf")
+
     if MODEL_READY:
-        input_data = np.array(image, dtype=np.float32) / 255.0
+        input_data = _preprocess(image)
         input_data = np.expand_dims(input_data, axis=0)
         interpreter.set_tensor(input_details[0]["index"], input_data)
         interpreter.invoke()
@@ -891,6 +952,8 @@ def _run_detect():
         top3 = np.argsort(output[0])[::-1][:3]
         print("[Farmie] Top predictions:",
               [(labels[int(i)], round(float(output[0][i]) * 100, 1)) for i in top3])
+        if confidence < MIN_CONFIDENCE:
+            return _reject_response(language, lang_code, "unsure")
     else:
         # DEMO mode: no real model file present, return a plausible mock result
         predicted_class = random.choice(labels)
