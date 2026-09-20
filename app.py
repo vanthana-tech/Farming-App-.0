@@ -1061,6 +1061,9 @@ def _run_detect():
     crop_ta = f"{_crop_ta} " if crop else ""
     crop_line = f"🌾 Crop: {crop}\n" if crop else ""
     crop_line_ta = f"🌾 பயிர்: {_crop_ta}\n" if crop else ""
+    _art = "an" if crop[:1].lower() in "aeiou" else "a"
+    leaf_en = f"{_art} {crop.lower()} leaf" if crop else "a leaf"      # "a banana leaf"
+    leaf_ta = f"{_crop_ta} இலை" if crop else "இலை"                    # "வாழை இலை"
 
     if healthy:
         if language == "tamil":
@@ -1069,28 +1072,36 @@ def _run_detect():
                 f"{crop_line_ta}"
                 f"🌿 நிலை: ஆரோக்கியமான பயிர்\n"
                 f"📊 நம்பிக்கை: {confidence:.1f}%\n\n"
-                f"உங்கள் {crop_ta}பயிர் ஆரோக்கியமாக உள்ளது."
+                f"இது ஒரு {leaf_ta}; ஆரோக்கியமாக உள்ளது."
             )
-            farmie_msg = f"🌱 ஃபார்மி: உங்கள் {crop_ta}பயிர் ஆரோக்கியமாக இருக்கிறது! தொடர்ந்து நல்ல பராமரிப்பை செய்யுங்கள்."
+            farmie_msg = (f"🌱 ஃபார்மி: இது ஒரு {leaf_ta}. உங்கள் {crop_ta}பயிர் ஆரோக்கியமாக "
+                          f"இருக்கிறது! தொடர்ந்து நல்ல பராமரிப்பை செய்யுங்கள்.")
         else:
             title = f"✅ Great! Your {crop_en}Crop is Healthy!"
-            result = f"{crop_line}🌿 Status: HEALTHY\n📊 Confidence: {confidence:.1f}%\n\nYour {crop_en.lower()}crop appears to be healthy."
-            farmie_msg = f"🌱 Farmie: Your {crop_en.lower()}crop looks healthy! Keep monitoring it regularly."
+            result = (f"{crop_line}🌿 Status: HEALTHY\n📊 Confidence: {confidence:.1f}%\n\n"
+                      f"This is {leaf_en} and it looks healthy.")
+            farmie_msg = f"🌱 Farmie: This is {leaf_en} and it looks healthy! Keep monitoring it regularly."
     else:
         remedy = get_remedy(predicted_class, lang_code)
         if language == "tamil":
-            title = f"⚠️ {crop_ta}பயிர் நோய் கண்டறியப்பட்டது: {condition}"
+            title = (f"⚠️ உங்கள் {crop_ta}பயிரில் {condition} நோய் உள்ளது" if crop
+                     else f"⚠️ பயிர் நோய் கண்டறியப்பட்டது: {condition}")
             result = (
                 f"{crop_line_ta}"
                 f"🌿 நோய்: {condition}\n"
                 f"📊 நம்பிக்கை: {confidence:.1f}%\n\n"
+                f"இது ஒரு {leaf_ta}; இதில் {condition} நோய் அறிகுறிகள் உள்ளன.\n\n"
                 f"💊 பரிந்துரைக்கப்பட்ட தீர்வு:\n{remedy}"
             )
-            farmie_msg = f"🌱 ஃபார்மி: உங்கள் {crop_ta}பயிரில் {condition} கண்டறியப்பட்டுள்ளது."
+            farmie_msg = f"🌱 ஃபார்மி: இது ஒரு {leaf_ta}. உங்கள் {crop_ta}பயிரில் {condition} நோய் உள்ளது."
         else:
-            title = f"⚠️ {crop_en}Crop Disease Detected: {condition}"
-            result = f"{crop_line}🌿 Disease: {condition}\n📊 Confidence: {confidence:.1f}%\n\n💊 Recommended Remedy:\n{remedy}"
-            farmie_msg = f"🌱 Farmie: {condition} has been detected in your {crop_en.lower()}crop."
+            title = (f"⚠️ Your {crop} crop has {condition}" if crop
+                     else f"⚠️ Crop Disease Detected: {condition}")
+            result = (f"{crop_line}🌿 Disease: {condition}\n📊 Confidence: {confidence:.1f}%\n\n"
+                      f"This is {leaf_en} and it shows signs of {condition}.\n\n"
+                      f"💊 Recommended Remedy:\n{remedy}")
+            farmie_msg = (f"🌱 Farmie: This is {leaf_en}, and your {crop.lower()} crop has {condition}." if crop
+                          else f"🌱 Farmie: {condition} has been detected in your crop.")
 
     audio_base64 = _tts_base64(farmie_msg, lang_code)
 
@@ -1163,4 +1174,5 @@ def _tts_base64(text, lang_code, timeout=8):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)
+
 
