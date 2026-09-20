@@ -213,6 +213,34 @@ def answer_query(message, lang):
     def r(en, ta):
         return en if lang == "en" else ta
 
+    # Banana-specific guidance (watering / temperature / humidity questions
+    # about banana still fall through to the live-sensor answers below)
+    if any(w in text for w in ["banana", "வாழை"]):
+        if any(w in text for w in ["disease", "leaf", "leaves", "spot", "sigatoka", "cordana",
+                                    "pestalotiopsis", "நோய்", "இலை"]):
+            return r(
+                "Common banana leaf diseases are Sigatoka, Cordana and Pestalotiopsis leaf spots. "
+                "Remove and destroy badly spotted leaves, keep the field well drained, avoid "
+                "overcrowding and overhead watering. Upload a clear photo of the leaf in the "
+                "'Detect Disease' tab and I'll identify it and suggest a remedy.",
+                "வாழை இலையில் காணப்படும் பொதுவான நோய்கள் சிகடோகா, கார்டானா மற்றும் "
+                "பெஸ்டலோடியோப்சிஸ் இலைப்புள்ளி நோய்கள். அதிகம் பாதிக்கப்பட்ட இலைகளை அகற்றி "
+                "அழிக்கவும், வயலில் நீர் தேங்காமல் பார்த்துக்கொள்ளவும், செடிகளை நெருக்கமாக "
+                "நடுவதையும் மேலிருந்து நீர் பாய்ச்சுவதையும் தவிர்க்கவும். 'Detect Disease' "
+                "தாவலில் இலையின் தெளிவான படத்தை பதிவேற்றினால் நோயை கண்டறிந்து தீர்வு "
+                "பரிந்துரைப்பேன்.",
+            )
+        if any(w in text for w in ["fertiliz", "manure", "உரம்"]):
+            return r(
+                "Bananas are heavy feeders and need plenty of potassium and nitrogen. Mix "
+                "compost or well-rotted manure into the soil and apply NPK fertilizer in several "
+                "smaller doses through the season rather than all at once. Ask your local "
+                "agricultural officer for the right amounts for your soil.",
+                "வாழைக்கு நைட்ரஜன் மற்றும் குறிப்பாக பொட்டாசியம் அதிகம் தேவை. தொழு உரம் "
+                "அல்லது கம்போஸ்டுடன் சேர்த்து, NPK உரத்தை பல தவணைகளாக பிரித்து இடுவது நல்லது. "
+                "சரியான அளவுக்கு உங்கள் வேளாண் அலுவலரை அணுகவும்.",
+            )
+
     # Sensor-aware answers
     if any(w in text for w in ["water", "irrigat", "நீர்", "பாசனம்"]):
         if s["soil_moisture_pct"] < 35:
@@ -960,7 +988,7 @@ def _reject_response(language, lang_code, reason):
     else:
         title = "❌ Leaf not detected"
         if reason == "not_leaf":
-            result = "This doesn't look like a plant leaf. Please upload a clear photo of a tomato or potato leaf."
+            result = "This doesn't look like a plant leaf. Please upload a clear photo of a banana, tomato or potato leaf."
         else:
             result = ("I couldn't identify this image with enough confidence. Please upload a "
                       "close, well-lit photo of a single leaf.")
@@ -1003,6 +1031,9 @@ def _run_detect():
               [(labels[int(i)], round(float(output[0][i]) * 100, 1)) for i in top3])
         if confidence < MIN_CONFIDENCE:
             return _reject_response(language, lang_code, "unsure")
+        # A class such as "Other_leaf" means: not one of our crops -> reject
+        if any(w in predicted_class.lower() for w in ("other", "unknown", "not_leaf", "not leaf", "background")):
+            return _reject_response(language, lang_code, "not_leaf")
     else:
         # DEMO mode: no real model file present, return a plausible mock result
         predicted_class = random.choice(labels)
@@ -1016,33 +1047,50 @@ def _run_detect():
     _disease_words = ("unhealthy", "not healthy", "diseased")
     healthy = any(w in _name for w in _healthy_words) and not any(w in _name for w in _disease_words)
 
+    # Split a label like "Banana_Sigatoka" or "Potato___Early_blight" into the
+    # crop ("Banana") and the condition ("Sigatoka" / "Early blight") so the
+    # result can say which crop was recognised.
+    import re as _re
+    _parts = [p for p in _re.split(r"_+", predicted_class) if p]
+    if len(_parts) > 1:
+        crop, condition = _parts[0].capitalize(), " ".join(_parts[1:])
+    else:
+        crop, condition = "", predicted_class
+    _crop_ta = {"Banana": "வாழை", "Tomato": "தக்காளி", "Potato": "உருளைக்கிழங்கு"}.get(crop, crop)
+    crop_en = f"{crop} " if crop else ""
+    crop_ta = f"{_crop_ta} " if crop else ""
+    crop_line = f"🌾 Crop: {crop}\n" if crop else ""
+    crop_line_ta = f"🌾 பயிர்: {_crop_ta}\n" if crop else ""
+
     if healthy:
         if language == "tamil":
             title = "✅ வாழ்த்துக்கள்! ஆரோக்கியமாக உள்ளது!"
             result = (
+                f"{crop_line_ta}"
                 f"🌿 நிலை: ஆரோக்கியமான பயிர்\n"
                 f"📊 நம்பிக்கை: {confidence:.1f}%\n\n"
-                f"உங்கள் பயிர் ஆரோக்கியமாக உள்ளது."
+                f"உங்கள் {crop_ta}பயிர் ஆரோக்கியமாக உள்ளது."
             )
-            farmie_msg = "🌱 ஃபார்மி: உங்கள் பயிர் ஆரோக்கியமாக இருக்கிறது! தொடர்ந்து நல்ல பராமரிப்பை செய்யுங்கள்."
+            farmie_msg = f"🌱 ஃபார்மி: உங்கள் {crop_ta}பயிர் ஆரோக்கியமாக இருக்கிறது! தொடர்ந்து நல்ல பராமரிப்பை செய்யுங்கள்."
         else:
-            title = "✅ Great! Your Crop is Healthy!"
-            result = f"🌿 Status: HEALTHY\n📊 Confidence: {confidence:.1f}%\n\nYour crop appears to be healthy."
-            farmie_msg = "🌱 Farmie: Your crop looks healthy! Keep monitoring it regularly."
+            title = f"✅ Great! Your {crop_en}Crop is Healthy!"
+            result = f"{crop_line}🌿 Status: HEALTHY\n📊 Confidence: {confidence:.1f}%\n\nYour {crop_en.lower()}crop appears to be healthy."
+            farmie_msg = f"🌱 Farmie: Your {crop_en.lower()}crop looks healthy! Keep monitoring it regularly."
     else:
         remedy = get_remedy(predicted_class, lang_code)
         if language == "tamil":
-            title = f"⚠️ பயிர் நோய் கண்டறியப்பட்டது: {predicted_class}"
+            title = f"⚠️ {crop_ta}பயிர் நோய் கண்டறியப்பட்டது: {condition}"
             result = (
-                f"🌿 நோய்: {predicted_class}\n"
+                f"{crop_line_ta}"
+                f"🌿 நோய்: {condition}\n"
                 f"📊 நம்பிக்கை: {confidence:.1f}%\n\n"
                 f"💊 பரிந்துரைக்கப்பட்ட தீர்வு:\n{remedy}"
             )
-            farmie_msg = f"🌱 ஃபார்மி: உங்கள் பயிரில் {predicted_class} கண்டறியப்பட்டுள்ளது."
+            farmie_msg = f"🌱 ஃபார்மி: உங்கள் {crop_ta}பயிரில் {condition} கண்டறியப்பட்டுள்ளது."
         else:
-            title = f"⚠️ Crop Disease Detected: {predicted_class}"
-            result = f"🌿 Disease: {predicted_class}\n📊 Confidence: {confidence:.1f}%\n\n💊 Recommended Remedy:\n{remedy}"
-            farmie_msg = f"🌱 Farmie: {predicted_class} has been detected in your crop."
+            title = f"⚠️ {crop_en}Crop Disease Detected: {condition}"
+            result = f"{crop_line}🌿 Disease: {condition}\n📊 Confidence: {confidence:.1f}%\n\n💊 Recommended Remedy:\n{remedy}"
+            farmie_msg = f"🌱 Farmie: {condition} has been detected in your {crop_en.lower()}crop."
 
     audio_base64 = _tts_base64(farmie_msg, lang_code)
 
@@ -1115,3 +1163,4 @@ def _tts_base64(text, lang_code, timeout=8):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)
+
