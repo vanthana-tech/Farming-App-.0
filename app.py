@@ -887,12 +887,22 @@ def _run_detect():
         output = interpreter.get_tensor(output_details[0]["index"])
         predicted_class = labels[int(np.argmax(output[0]))]
         confidence = float(np.max(output[0])) * 100
+        # Debug: shows in the terminal what the model actually predicted
+        top3 = np.argsort(output[0])[::-1][:3]
+        print("[Farmie] Top predictions:",
+              [(labels[int(i)], round(float(output[0][i]) * 100, 1)) for i in top3])
     else:
         # DEMO mode: no real model file present, return a plausible mock result
         predicted_class = random.choice(labels)
         confidence = round(random.uniform(78, 97), 1)
 
-    healthy = "healthy" in predicted_class.lower()
+    # Works with label names like "Healthy", "Tomato___healthy", "Normal",
+    # "Good leaf", "No disease" ... and never treats "Unhealthy"/"Diseased"
+    # as healthy.
+    _name = predicted_class.lower().replace("_", " ").replace("-", " ")
+    _healthy_words = ("healthy", "normal", "good", "fresh", "no disease", "disease free", "ஆரோக்கிய")
+    _disease_words = ("unhealthy", "not healthy", "diseased")
+    healthy = any(w in _name for w in _healthy_words) and not any(w in _name for w in _disease_words)
 
     if healthy:
         if language == "tamil":
